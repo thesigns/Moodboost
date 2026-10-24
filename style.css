@@ -1,4 +1,14 @@
+/* Fredoka (SIL OFL, see fonts/OFL.txt), self-hosted: latin subset,
+   variable weight 400–700. */
+@font-face {
+  font-family: "Fredoka";
+  src: url("fonts/fredoka-latin.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
 :root {
+  --font-fun: "Fredoka", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --bg: #ffeedd;
   --fg: #3b2f2a;
   --accent: #f07a3b;
@@ -129,22 +139,51 @@ body::before {
 }
 
 h1 {
+  --bounce: 0.14em;
   margin: 0;
-  font-size: clamp(2.5rem, 8vw, 5rem);
-  letter-spacing: -0.02em;
+  font-family: var(--font-fun);
+  font-size: clamp(3rem, 10vw, 6rem);
+  font-weight: 600;
 }
 
 .big-button {
+  --bounce: 0.08em;
   min-width: 12rem;
-  padding: 1rem 2.5rem;
+  padding: 0.9rem 2.5rem;
   border: 0;
   border-radius: 999px;
   background: var(--accent);
   color: var(--accent-fg);
   font: inherit;
-  font-size: 1.5rem;
+  font-family: var(--font-fun);
+  font-size: 1.6rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* Letters that bob and tilt in a wave, as if the text were laughing.
+   Spans are created by setBouncyText() in main.js. */
+.bouncy > span {
+  display: inline-block;
+  animation: letter-bounce 1.8s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.11s - 2s);
+}
+
+@keyframes letter-bounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(calc(var(--bounce) * -1)) rotate(-5deg); }
+  50% { transform: translateY(calc(var(--bounce) * 0.25)) rotate(3deg); }
+  75% { transform: translateY(calc(var(--bounce) * -0.4)) rotate(-1deg); }
+}
+
+.big-button:disabled > span {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bouncy > span {
+    animation: none;
+  }
 }
 
 .big-button:disabled {
@@ -179,6 +218,7 @@ h1 {
   background: color-mix(in srgb, var(--bg) 80%, transparent);
   color: var(--muted);
   font: inherit;
+  font-family: var(--font-fun);
   cursor: pointer;
 }
 

@@ -40,6 +40,7 @@ const FILES = ['man', 'woman', 'child'].flatMap((type) =>
 );
 
 const stage = document.getElementById('stage');
+const title = document.querySelector('h1');
 const startScreen = document.getElementById('screen-start');
 const endScreen = document.getElementById('screen-end');
 const startButton = document.getElementById('btn-start');
@@ -54,21 +55,24 @@ let voices = null;
 let session = null;
 let lastFrameMs = 0;
 
+setBouncyText(title, title.textContent);
+setBouncyText(againButton, againButton.textContent);
+
 // Start loading right away; the Start button waits until everything is ready.
 loadVoices(ctx, FILES, (done, total) => {
-  startButton.textContent = `Loading… ${done}/${total}`;
+  setBouncyText(startButton, `Loading… ${done}/${total}`);
 })
   .then((loaded) => {
     voices = loaded.map((voice) => ({
       ...voice,
       envelope: computeEnvelope(voice.buffer, ENVELOPE_WINDOW),
     }));
-    startButton.textContent = 'Start';
+    setBouncyText(startButton, 'Start');
     startButton.disabled = false;
   })
   .catch((error) => {
     console.error(error);
-    startButton.textContent = 'Unavailable';
+    setBouncyText(startButton, 'Unavailable');
     loadError.textContent =
       location.protocol === 'file:'
         ? "Couldn't load the recordings. Open the app through a web server, not as a local file."
@@ -222,6 +226,26 @@ function finishSession() {
   againButton.focus();
   // Nothing is playing; let the audio hardware idle until the next session.
   ctx.suspend();
+}
+
+/**
+ * Replaces an element's text with one span per letter, so CSS can bounce
+ * them individually (.bouncy in style.css). Screen readers get the plain
+ * text through aria-label.
+ */
+function setBouncyText(element, text) {
+  element.classList.add('bouncy');
+  element.setAttribute('aria-label', text);
+  element.replaceChildren(
+    ...[...text].map((char, i) => {
+      if (char === ' ') return document.createTextNode(' ');
+      const letter = document.createElement('span');
+      letter.textContent = char;
+      letter.setAttribute('aria-hidden', 'true');
+      letter.style.setProperty('--i', i);
+      return letter;
+    }),
+  );
 }
 
 function relayout() {
