@@ -1,74 +1,74 @@
 # Moodboost
 
-Prosta apka webowa poprawiająca nastrój, oparta na tym, że śmiech jest zaraźliwy.
+A simple web app that lifts your mood, built on the fact that laughter is contagious.
 
-Na ekranie pojawia się jedna śmiejąca się buzia, potem dołączają kolejne, aż śmieje się cały tłum. Każda postać rusza ustami, oczami i całym ciałem w rytm prawdziwego nagrania śmiechu. Wystarczy kliknąć Start i dać się zarazić.
+One laughing face appears on screen, then another joins, and another, until a whole crowd is laughing. Every character moves its mouth, eyes and body in time with a real laughter recording. Press Start and let it get to you.
 
-Moodboost to „poprawiacz nastroju”, a nie narzędzie terapeutyczne.
+Moodboost is a mood booster, not a therapeutic tool.
 
-## Jak to działa
+## How it works
 
-- Pierwsze 12 postaci dołącza co 6 s. Każda ma własne nagranie śmiechu (mężczyźni, kobiety, dzieci).
-- Potem tłum rośnie dalej, coraz szybciej, do 120 postaci (na telefonie mniej, tyle, ile się zmieści). Nowe postacie nie dokładają dźwięku, bo przy 12 głosach i tak brzmi to jak tłum, ale śmieją się w rytmie jednego z nagrań.
-- Śmiech trwa, dopóki nie klikniesz **Stop**. Jeśli karta jest ukryta dłużej niż 3 minuty, dźwięk łagodnie się wycisza.
-- Postacie są rysowane proceduralnie w SVG: losowe fryzury, kolory skóry i drobne cechy (broda, okulary, kolczyki, piegi). Przy każdej sesji tłum wygląda inaczej.
-- Ruch postaci wynika z głośności nagrania, wyliczonej z góry po wczytaniu plików, więc usta łapią rytm każdego „ha-ha”.
+- The first 12 characters join every 6 seconds. Each one has its own laughter recording (men, women, children).
+- After that the crowd keeps growing, faster and faster, up to 120 characters (fewer on a phone, as many as fit). They add no new sound, since 12 voices already sound like a crowd, but each laughs in the rhythm of one of the recordings.
+- The laughter goes on until you press **Stop**. If the tab stays hidden for more than 3 minutes, the sound fades out gently.
+- Characters are drawn procedurally in SVG with random hair styles, skin tones and small traits (beards, glasses, earrings, freckles), so every session's crowd looks different.
+- Motion follows the loudness of each recording, analysed up front when the files load, so the mouths catch the rhythm of every "ha-ha".
 
-## Uruchomienie lokalnie
+## Running locally
 
-Apka to statyczna strona bez kroku budowania, ale potrzebuje serwera HTTP (przeglądarka nie wczyta nagrań ani modułów JS z `file://`).
+The app is a static site with no build step, but it needs an HTTP server (browsers won't load the recordings or the JS modules from `file://`).
 
 ```sh
 python -m http.server
 ```
 
-Potem otwórz http://localhost:8000.
+Then open http://localhost:8000.
 
-## Publikacja na GitHub Pages
+## Publishing on GitHub Pages
 
-1. Wypchnij repozytorium na GitHuba.
-2. W **Settings → Pages** wybierz **Deploy from a branch**, gałąź `main` i folder `/ (root)`.
-3. Po chwili apka będzie dostępna pod `https://<użytkownik>.github.io/<repozytorium>/`.
+1. Push the repository to GitHub.
+2. In **Settings → Pages**, choose **Deploy from a branch**, branch `main`, folder `/ (root)`.
+3. After a moment the app is live at `https://<user>.github.io/<repository>/`.
 
-GitHub Pages serwuje stronę przez HTTPS, a tego wymaga m.in. blokada wygaszania ekranu (Screen Wake Lock).
+GitHub Pages serves the site over HTTPS, which the screen wake lock (keeping the screen on during a session) requires.
 
-## Wymagania
+## Requirements
 
-- Aktualne przeglądarki desktopowe: Chrome, Firefox, Safari, Edge.
-- Telefony: Chrome na Androidzie, Safari na iOS 16.4 lub nowszym (na iPhonie dźwięk gra także w trybie cichym).
-- Apka szanuje systemowe ustawienia: jasny i ciemny motyw oraz ograniczenie animacji (`prefers-reduced-motion`).
+- Current desktop browsers: Chrome, Firefox, Safari, Edge.
+- Phones: Chrome on Android, Safari on iOS 16.4 or later (on iPhone the sound plays even in silent mode).
+- The app follows system settings: light and dark theme, and reduced motion (`prefers-reduced-motion`).
 
-## Prywatność
+## Privacy
 
-Apka nie zbiera żadnych danych i nie łączy się z niczym poza własnymi plikami. Czcionka jest hostowana razem z apką, bez Google Fonts.
+The app collects no data and connects to nothing but its own files. The font is hosted with the app, not loaded from Google Fonts.
 
-## Struktura projektu
+## Project structure
 
 ```
-index.html        strona i ekrany
-style.css         wygląd, motywy, animacje
+index.html        page and screens
+style.css         styling, themes, animations
 js/
-  main.js         przebieg sesji, ekrany, wszystkie stałe do strojenia
-  audio.js        ładowanie, pętle, odtwarzanie i miks dźwięku
-  envelope.js     obwiednia głośności i „intensywność śmiechu”
-  faces.js        proceduralne postacie SVG i ich mimika
-  layout.js       siatka postaci
-audio/            12 nagrań śmiechu (mp3, mono, wyrównana głośność)
-fonts/            czcionka Fredoka (woff2) i jej licencja
-dev/faces.html    podgląd postaci do strojenia wyglądu
-docs/moodboost.md pełna specyfikacja
+  main.js         session flow, screens, all tunable constants
+  audio.js        loading, looping, playback and mixing
+  envelope.js     loudness envelopes and "laugh intensity"
+  faces.js        procedural SVG characters and their expressions
+  layout.js       character grid
+audio/            12 laughter recordings (mp3, mono, loudness-matched)
+fonts/            Fredoka font (woff2) and its license
+dev/faces.html    character preview for tuning the looks
+docs/moodboost.md full specification (in Polish)
 ```
 
-## Strojenie
+## Tuning
 
-- Czasy, limity tłumu, poziomy miksu i progi animacji są stałymi na górze `js/main.js`.
-- `dev/faces.html` pokazuje losowe postacie z suwakiem intensywności i symulacją śmiechu. Parametr `?n=120` pokazuje więcej postaci, np. do sprawdzenia wydajności.
-- Kolory tła są zmiennymi CSS (`--blob-1` … `--blob-4`) na górze `style.css`, osobno dla każdego motywu.
+- Timings, crowd limits, mix levels and animation thresholds are constants at the top of `js/main.js`.
+- `dev/faces.html` shows random characters with an intensity slider and simulated laughter. `?n=120` shows more of them, e.g. to check performance.
+- Background colours are CSS variables (`--blob-1` … `--blob-4`) at the top of `style.css`, one set per theme.
 
-## Licencja
+## License
 
-Kod i nagrania: [MIT](LICENSE), © 2026 Jakub W. Adamczyk.
+Code and recordings: [MIT](LICENSE), © 2026 Jakub W. Adamczyk.
 
-Nagrania śmiechu zostały wygenerowane w [ElevenLabs](https://elevenlabs.io) na płatnym planie.
+The laughter recordings were generated with [ElevenLabs](https://elevenlabs.io) on a paid plan.
 
-Czcionka [Fredoka](https://fonts.google.com/specimen/Fredoka) w `fonts/` jest objęta osobną licencją [SIL Open Font License 1.1](fonts/OFL.txt).
+The [Fredoka](https://fonts.google.com/specimen/Fredoka) font in `fonts/` is licensed separately under the [SIL Open Font License 1.1](fonts/OFL.txt).
