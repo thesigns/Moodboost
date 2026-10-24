@@ -95,6 +95,14 @@ Gdy postać milknie w przerwie nagrania, ma wyglądać na uśmiechniętą i rozb
 - Postacie generowane proceduralnie w JS, bez zewnętrznych plików graficznych.
 - Wejście nowej postaci: krótka animacja pojawienia się (np. wyskoczenie ze skalowaniem).
 
+Zrealizowane warianty:
+
+- **Fryzury:** mężczyzna: krótka, z przedziałkiem, kręcona, łysina z bokami; kobieta: długie, bob, kok, kucyk, burza loków; dziecko: czub, kucyki, „grzybek”, loczki.
+- **Drobne cechy (losowo):** broda z wąsami u części mężczyzn, okulary u części dorosłych, kolczyki u części kobiet, piegi u części dzieci. Siwe włosy tylko u mężczyzn.
+- **Mimika:** usta z zębami i językiem przy otwarciu, oczy mrużące się w łuki (błysk w oku znika przy mocnym śmiechu), brwi unoszące się (wewnętrzne końce wyżej), unoszące się policzki, odchylanie i drżenie głowy, podskakujące ramiona.
+- **Losowanie bez powtórzeń:** fryzury (osobno dla każdego typu), kolor skóry i kolor tła komórki są losowane z „worka”, który opróżnia się, zanim jakaś wartość się powtórzy. Dzięki temu w jednej sesji jest jak najwięcej różnorodności.
+- **Podgląd:** `dev/faces.html` pokazuje 18 losowych postaci, z suwakiem intensywności i symulacją śmiechu. Służy do strojenia wyglądu, nie jest częścią apki.
+
 ## Układ ekranu
 
 - Ekran dzieli się na siatkę komórek, po jednej na postać.
@@ -105,7 +113,7 @@ Gdy postać milknie w przerwie nagrania, ma wyglądać na uśmiechniętą i rozb
 ## Pozostałe wymagania
 
 - Podczas sesji ekran nie powinien się wygaszać (Screen Wake Lock API, jeśli dostępne). Blokadę trzeba ponowić po powrocie na kartę (`visibilitychange`), bo przeglądarka zwalnia ją przy ukryciu strony.
-- Respektuj `prefers-reduced-motion`: ogranicz drganie i przesuwanie, zostaw ruch ust.
+- Respektuj `prefers-reduced-motion`: ogranicz drganie i przesuwanie, zostaw ruch ust. Ruch głowy i ciała jest wtedy zmniejszony do 20%, a mimika (usta, oczy, brwi, policzki) zostaje pełna. Komórki przeskakują na nowe miejsca bez animacji, a nowe postacie pojawiają się przez wygaszenie zamiast wyskoczenia.
 - Obsługa jasnego i ciemnego motywu systemowego. Tło w obu motywach jest wesołe, nigdy czarne: powoli płynący gradient z kolorowych plam (jasny: brzoskwinia, róż, żółty, mięta; ciemny: śliwka, malina, bursztyn, morski). Animacja tła tylko przez `transform` (bez przemalowywania), a przy `prefers-reduced-motion` tło stoi.
 - Brak zbierania jakichkolwiek danych, brak sieci poza wczytaniem własnych plików.
 - Kod czytelny, podzielony na logiczne moduły (audio, analiza, postacie, układ, przebieg sesji), z komentarzami.
@@ -123,6 +131,7 @@ js/
   layout.js      // siatka i animacja układu
 audio/           // 12 plików mp3
 fonts/           // fredoka-latin.woff2 + OFL.txt
+dev/faces.html   // podgląd postaci do strojenia
 ```
 
 ## Kryteria akceptacji

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Moodboost — faces</title>
+  <link rel="stylesheet" href="../style.css">
+  <style>
+    /* Dev page: a scrolling gallery of characters instead of the session grid. */
+    body {
+      overflow: auto;
+    }
+
+    .controls {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem 1.5rem;
+      align-items: center;
+      padding: 12px 16px;
+      background: color-mix(in srgb, var(--bg) 85%, transparent);
+    }
+
+    #gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 4px;
+      padding: 16px;
+    }
+
+    #gallery .cell {
+      position: relative;
+      width: auto;
+      height: auto;
+      aspect-ratio: 1;
+      transform: none;
+      transition: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <label>Intensity <input id="intensity" type="range" min="0" max="1" step="0.01" value="0"></label>
+    <label><input id="simulate" type="checkbox" checked> Simulate laughing</label>
+    <button id="reroll" type="button">New faces</button>
+  </div>
+  <div id="gallery"></div>
+
+  <script type="module">
+    import { createFace } from '../js/faces.js';
+
+    const gallery = document.getElementById('gallery');
+    const slider = document.getElementById('intensity');
+    const simulate = document.getElementById('simulate');
+    let faces = [];
+
+    // Enough of each type to cycle through all of its hair styles.
+    function build() {
+      faces = ['man', 'woman', 'child'].flatMap((type) =>
+        Array.from({ length: 6 }, () => ({ type, face: createFace(type), offset: Math.random() * 10 })),
+      );
+      gallery.replaceChildren(...faces.map(({ face }) => face.element));
+    }
+
+    // Fake "ha-ha-ha": 4.5 bursts per second in phrases separated by pauses.
+    function fakeLaugh(t) {
+      const phrase = Math.sin(t * 0.9) > -0.3 ? 1 : 0;
+      return Math.max(0, Math.sin(t * 2 * Math.PI * 4.5)) * phrase;
+    }
+
+    let last = performance.now();
+    function frame(now) {
+      const dt = Math.min(0.1, (now - last) / 1000);
+      last = now;
+      const t = now / 1000;
+      for (const { face, offset } of faces) {
+        face.update(simulate.checked ? fakeLaugh(t + offset) : Number(slider.value), dt);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    document.getElementById('reroll').addEventListener('click', build);
+    slider.addEventListener('input', () => (simulate.checked = false));
+    build();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
