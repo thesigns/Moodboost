@@ -1,19 +1,28 @@
 :root {
-  --bg: #fdf6ec;
+  --bg: #ffeedd;
   --fg: #3b2f2a;
-  --accent: #f08a4b;
+  --accent: #f07a3b;
   --accent-fg: #ffffff;
-  --muted: #8a7a70;
+  --muted: #7d6a60;
   --cell-radius: 18px;
+  /* Colour blobs of the animated background */
+  --blob-1: #ffb98f;
+  --blob-2: #ffc2dd;
+  --blob-3: #ffe98a;
+  --blob-4: #b9ecd6;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1f1a24;
-    --fg: #f3ece6;
-    --accent: #f5a06a;
-    --accent-fg: #1f1a24;
-    --muted: #a99c94;
+    --bg: #3b2150;
+    --fg: #fbf1ea;
+    --accent: #ffa36b;
+    --accent-fg: #2d1840;
+    --muted: #dcc6d6;
+    --blob-1: #a8436f;
+    --blob-2: #6d3c9c;
+    --blob-3: #c0703a;
+    --blob-4: #2f6a8f;
   }
 }
 
@@ -33,6 +42,34 @@ body {
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Slowly drifting colour blobs. An oversized layer moved only with
+   transform, so the animation stays on the compositor (no repaints). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: -50vmax;
+  z-index: -1;
+  background:
+    radial-gradient(circle at 35% 35%, var(--blob-1) 0, transparent 22%),
+    radial-gradient(circle at 65% 38%, var(--blob-2) 0, transparent 24%),
+    radial-gradient(circle at 40% 66%, var(--blob-3) 0, transparent 22%),
+    radial-gradient(circle at 63% 63%, var(--blob-4) 0, transparent 22%),
+    var(--bg);
+  animation: background-drift 36s ease-in-out infinite alternate;
+}
+
+@keyframes background-drift {
+  0% { transform: rotate(0deg) scale(1); }
+  50% { transform: rotate(40deg) scale(1.15) translate(3%, -2%); }
+  100% { transform: rotate(-25deg) scale(1.05) translate(-3%, 2%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
 }
 
 /* ---- Stage and character cells ---- */
@@ -57,6 +94,7 @@ body {
   width: 100%;
   height: 100%;
   border-radius: var(--cell-radius);
+  box-shadow: 0 6px 20px rgb(40 10 40 / 0.18);
 }
 
 .cell.entering svg {
@@ -87,7 +125,7 @@ body {
 }
 
 #screen-end {
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
 }
 
 h1 {

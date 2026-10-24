@@ -105,7 +105,7 @@ Gdy postać milknie w przerwie nagrania, ma wyglądać na uśmiechniętą i rozb
 
 - Podczas sesji ekran nie powinien się wygaszać (Screen Wake Lock API, jeśli dostępne). Blokadę trzeba ponowić po powrocie na kartę (`visibilitychange`), bo przeglądarka zwalnia ją przy ukryciu strony.
 - Respektuj `prefers-reduced-motion`: ogranicz drganie i przesuwanie, zostaw ruch ust.
-- Obsługa jasnego i ciemnego motywu systemowego.
+- Obsługa jasnego i ciemnego motywu systemowego. Tło w obu motywach jest wesołe, nigdy czarne: powoli płynący gradient z kolorowych plam (jasny: brzoskwinia, róż, żółty, mięta; ciemny: śliwka, malina, bursztyn, morski). Animacja tła tylko przez `transform` (bez przemalowywania), a przy `prefers-reduced-motion` tło stoi.
 - Brak zbierania jakichkolwiek danych, brak sieci poza wczytaniem własnych plików.
 - Kod czytelny, podzielony na logiczne moduły (audio, analiza, postacie, układ, przebieg sesji), z komentarzami.
 
