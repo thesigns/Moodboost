@@ -12,7 +12,7 @@ Apka nie jest narzędziem terapeutycznym i nie powinna się tak przedstawiać. T
 - Statyczna strona, możliwa do hostowania na GitHub Pages.
 - Dźwięk wyłącznie przez Web Audio API (nie przez tagi `<audio>`).
 - Grafika wyłącznie w SVG generowanym z JS.
-- Czcionka tytułu i przycisków: Fredoka (Google Fonts, licencja SIL OFL), hostowana lokalnie jako woff2 w `fonts/` (podzbiór latin, grubości 400–700). Bez łączenia z serwerami Google. Litery tytułu i dużych przycisków bujają się falą, jakby tekst się śmiał (wyłączone przy `prefers-reduced-motion` i na nieaktywnym przycisku).
+- Czcionka tytułu i przycisków: Fredoka (Google Fonts, licencja SIL OFL), hostowana lokalnie jako woff2 w `fonts/` (podzbiór latin, grubości 400–700). Bez łączenia z serwerami Google. Litery tytułu i dużych przycisków bujają się falą, jakby tekst się śmiał (wyłączone przy `prefers-reduced-motion` i na nieaktywnym przycisku). Każda litera tytułu ma inny kolor z wesołej palety (`--title-1` … `--title-5` w `style.css`), osobnej dla każdego motywu: głębsze barwy na jasnym tle, jaśniejsze na ciemnym.
 - Interfejs apki, komentarze w kodzie i `README.md` po angielsku (`<html lang="en">`). Po polsku jest tylko dokumentacja w `docs/`.
 - Główny cel to laptop i komputer stacjonarny (ekran poziomy, przeglądarka desktopowa). Apka ma też w pełni działać na telefonach, w pionie i poziomie, ale nie jest projektowana mobile-first.
 - Wspierane są aktualne wersje przeglądarek. Na iOS minimum to 16.4 (od tej wersji Safari ma `navigator.audioSession` i Screen Wake Lock API). Starszymi iPhone'ami się nie przejmujemy.

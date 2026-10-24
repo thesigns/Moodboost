@@ -20,6 +20,12 @@
   --blob-2: #ffc2dd;
   --blob-3: #ffe98a;
   --blob-4: #b9ecd6;
+  /* Title letters cycle through these */
+  --title-1: #e2475a;
+  --title-2: #7a4fd8;
+  --title-3: #168f7c;
+  --title-4: #e07400;
+  --title-5: #2c78d4;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -33,6 +39,11 @@
     --blob-2: #6d3c9c;
     --blob-3: #c0703a;
     --blob-4: #2f6a8f;
+    --title-1: #ff8a8a;
+    --title-2: #ffd166;
+    --title-3: #7ee6c6;
+    --title-4: #ffa86b;
+    --title-5: #9fc3ff;
   }
 }
 
@@ -162,7 +173,15 @@ h1 {
   font-family: var(--font-fun);
   font-size: clamp(3rem, 10vw, 6rem);
   font-weight: 600;
+  text-shadow: 0 0.05em 0 rgb(40 10 40 / 0.18);
 }
+
+/* Every letter of the title in a different colour. */
+h1 > span:nth-child(5n + 1) { color: var(--title-1); }
+h1 > span:nth-child(5n + 2) { color: var(--title-2); }
+h1 > span:nth-child(5n + 3) { color: var(--title-3); }
+h1 > span:nth-child(5n + 4) { color: var(--title-4); }
+h1 > span:nth-child(5n + 5) { color: var(--title-5); }
 
 .big-button {
   --bounce: 0.08em;
