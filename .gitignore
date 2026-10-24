@@ -1,0 +1,7 @@
+# Oryginalne nagrania (stereo, 192 kb/s) — zostają lokalnie, do repo trafiają tylko pliki z audio/
+audio_original/
+
+# Pliki systemowe
+Thumbs.db
+desktop.ini
+.DS_Store
