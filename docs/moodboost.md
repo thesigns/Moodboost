@@ -33,22 +33,36 @@ Na darmowym planie ElevenLabs wymaga atrybucji, ale pliki były wygenerowane na 
 
 1. **Ekran startowy.** Nazwa „Moodboost”, jeden duży przycisk „Start” i krótka, nienachalna wskazówka, żeby ustawić wygodną głośność („Set a comfortable volume.”). Kliknięcie wywołuje `resume()` na `AudioContext` (wymagane przez Safari na iOS i polityki autoplay).
 2. **Ładowanie.** `AudioContext` jest tworzony od razu przy otwarciu strony (w stanie wstrzymanym, `suspended`) i od razu zaczyna się pobieranie i dekodowanie (`decodeAudioData`) wszystkich 12 plików oraz liczenie obwiedni. Przycisk start jest nieaktywny, dopóki wszystko nie jest gotowe, a w tym czasie widać prosty wskaźnik ładowania.
-3. **Narastanie chóru.** Zaczyna się od jednej postaci. Co 6 s dołącza kolejna, aż do 12. Kolejność dołączania jest losowa przy każdej sesji (przetasowane 12 plików), ale pierwsza postać powinna być dorosła, nie dziecko.
-4. **Pełny chór.** Po dołączeniu dwunastej postaci wszyscy śmieją się razem jeszcze przez 18 s.
-5. **Wyciszenie.** Dźwięk łagodnie wycisza się, postacie uspokajają się i zatrzymują.
-6. **Ekran końcowy.** Przycisk „Play again”. Kolejna sesja używa już zdekodowanych buforów i obwiedni (bez ponownego ładowania), z nowym tasowaniem kolejności, nowymi offsetami startu i nowym losowaniem wyglądu postaci.
+3. **Narastanie chóru.** Zaczyna się od jednej postaci. Co 6 s dołącza kolejna, aż do 12, każda z własnym nagraniem. Kolejność dołączania jest losowa przy każdej sesji (przetasowane 12 plików), ale pierwsza postać powinna być dorosła, nie dziecko.
+4. **Rosnący tłum.** Po dwunastej postaci dołączają kolejne, już bez nowych dźwięków (przy 12 głosach i tak nie da się rozróżnić, ile osób się śmieje). Odstęp skraca się stopniowo z 6 s do 2,5 s. Tłum rośnie do 120 postaci albo mniej, jeśli komórki siatki byłyby mniejsze niż 72 px. Na laptopie wychodzi 120, na telefonie ok. 50–55. Pierwsze 12 postaci jest zawsze widocznych, nawet na bardzo małym ekranie.
+5. **Śmiech bez końca.** Sesja nie kończy się sama: wszyscy śmieją się, dopóki użytkownik nie kliknie „Stop”. Sam wie najlepiej, kiedy skończyć.
+6. **Wyciszenie.** Po „Stop” nikt już nie dołącza, dźwięk łagodnie wycisza się przez 6 s, a postacie uspokajają się i zatrzymują.
+7. **Ekran końcowy.** Przycisk „Play again”. Kolejna sesja używa już zdekodowanych buforów i obwiedni (bez ponownego ładowania), z nowym tasowaniem kolejności, nowymi offsetami startu i nowym losowaniem wyglądu postaci.
 
-Przez całą sesję (kroki 3–5) widoczny jest dyskretny przycisk „Stop”. Kliknięcie od razu przechodzi do wyciszenia (krok 5), a potem do ekranu końcowego.
+Przez całą sesję widoczny jest przycisk „Stop”. Jako jedyne wyjście z sesji jest łatwy do znalezienia (czytelny kontrast, cień), ale nie konkuruje z postaciami.
 
-Wszystkie czasy jako stałe na górze pliku, do łatwego strojenia. Wartości startowe:
+**Postacie bez głosu.** Każda postać ponad 12 dostaje obwiednię losowego z 12 nagrań, z losowym punktem startu, i typ postaci zgodny z tym nagraniem. Śmieje się więc w wiarygodnym rytmie, choć jej nie słychać. Te postacie są tworzone dopiero w chwili dołączenia.
 
-- odstęp między dołączaniem kolejnych postaci: 6 s,
-- czas pełnego chóru po dołączeniu ostatniej: 18 s,
-- czas wyciszenia: 6 s.
+**Ukryta karta.** Jeśli karta jest ukryta dłużej niż 3 minuty, śmiech łagodnie wycisza się i sesja kończy (ekran końcowy czeka po powrocie). Powrót wcześniej anuluje wyciszenie i sesja trwa dalej. Chroni to przed śmiechem grającym godzinami w zapomnianej karcie. Wyciszenie jest zaplanowane na zegarze audio (timery w ukrytych kartach są dławione), a samo zatrzymanie źródeł dźwięku robi zwykły timer, który może się spóźnić, ale dźwięk jest wtedy już wyciszony.
 
-Przy tych wartościach sesja trwa ok. 90 s (11 × 6 s + 18 s + 6 s).
+Wszystkie czasy i limity jako stałe na górze `js/main.js`, do łatwego strojenia. Wartości startowe:
 
-**Harmonogram na zegarze audio.** Dołączanie postaci, pełny chór i wyciszenie są planowane względem `audioContext.currentTime` (`source.start(when)`, automatyka `GainNode`), a nie przez `setTimeout`/`setInterval`. Na karcie w tle przeglądarka dławi timery i wstrzymuje `requestAnimationFrame`, a dźwięk gra dalej, więc tylko zegar audio daje spójny przebieg. Stan wizualny (które postacie są widoczne) jest w każdej klatce wyliczany z bieżącego czasu audio, a nie z licznika zdarzeń, żeby po powrocie na kartę obraz od razu zgadzał się z dźwiękiem.
+- odstęp między dołączaniem postaci z głosem (pierwsze 12): 6 s,
+- odstęp dla kolejnych postaci: od 6 s w dół do 2,5 s (`CROWD_INTERVAL_MIN`), przy czym większość skrócenia następuje w ciągu ok. 8 postaci (`CROWD_ACCELERATION`),
+- maksymalna liczba postaci: 120, minimalny rozmiar komórki: 72 px,
+- czas wyciszenia: 6 s,
+- wyciszenie w ukrytej karcie po: 180 s.
+
+Przy tych wartościach 12. postać dołącza po 66 s, 50. po ok. 3 min, a 120. po ok. 6 min.
+
+**Wydajność dużego tłumu.** Najdroższe jest przerysowywanie SVG, nie JavaScript (aktualizacja 120 buzi to ok. 3 ms). Dlatego:
+
+- atrybut SVG jest zapisywany tylko wtedy, gdy jego wartość się zmieniła, więc buzia, która uspokoiła się w przerwie śmiechu, nie jest przerysowywana,
+- powyżej 40 postaci każda buzia jest aktualizowana co drugą klatkę, na zmianę z sąsiednimi (30 klatek/s na buzię wystarcza przy 4–5 „ha” na sekundę, a praca na klatkę spada o połowę).
+
+Zmierzone w Chrome na laptopie: 120 postaci, ok. 57 klatek/s.
+
+**Harmonogram na zegarze audio.** Dołączanie postaci i wyciszenie są planowane względem `audioContext.currentTime` (`source.start(when)`, automatyka `GainNode`), a nie przez `setTimeout`/`setInterval`. Na karcie w tle przeglądarka dławi timery i wstrzymuje `requestAnimationFrame`, a dźwięk gra dalej, więc tylko zegar audio daje spójny przebieg. Stan wizualny (które postacie są widoczne) jest w każdej klatce wyliczany z bieżącego czasu audio, a nie z licznika zdarzeń, żeby po powrocie na kartę obraz od razu zgadzał się z dźwiękiem.
 
 ## Odtwarzanie dźwięku
 
@@ -136,14 +150,17 @@ dev/faces.html   // podgląd postaci do strojenia
 
 ## Kryteria akceptacji
 
-- Po kliknięciu startu śmieje się jedna postać, potem co ok. 6 s dołącza kolejna, aż do 12. Cała sesja trwa ok. 90 s.
+- Po kliknięciu startu śmieje się jedna postać, potem co ok. 6 s dołącza kolejna, aż do 12. Potem dołączają kolejne, bez nowych dźwięków i coraz szybciej, aż do 120 postaci albo do zapełnienia ekranu (komórki nie mniejsze niż 72 px).
+- Sesja trwa, dopóki użytkownik nie kliknie „Stop”, chyba że karta jest ukryta dłużej niż 3 minuty.
+- Przy pełnym tłumie animacja jest płynna (na laptopie ok. 60 klatek/s).
+- Podczas sesji ekran nie gaśnie (Wake Lock), także po powrocie z innej karty.
 - Każda postać ma inny plik audio, a jej usta ruszają się tylko wtedy, gdy w jej nagraniu słychać śmiech, i podążają za rytmem „ha-ha”, także na słuchawkach Bluetooth.
 - Przy 12 postaciach dźwięk nie przesterowuje.
 - W miejscu zapętlenia nagrania nie słychać przerwy ani trzasku.
 - Po przełączeniu na inną kartę i powrocie przebieg sesji zgadza się z dźwiękiem.
 - Przycisk „Stop” w trakcie sesji przechodzi do łagodnego wyciszenia.
 - Działa w desktopowych przeglądarkach (Chrome, Firefox, Safari, Edge) oraz na telefonach (Chrome na Androidzie, Safari na iOS). Na iOS 16.4+ dźwięk gra także w trybie cichym.
-- Sesja kończy się łagodnym wyciszeniem i można ją powtórzyć bez ponownego ładowania plików.
+- Po „Stop” sesja kończy się łagodnym wyciszeniem i można ją powtórzyć bez ponownego ładowania plików.
 
 ## Poza zakresem (na później)
 

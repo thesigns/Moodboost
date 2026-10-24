@@ -68,6 +68,19 @@ function el(name, attrs = {}) {
   return node;
 }
 
+// Last value written per element and attribute. Repainting dozens of SVG
+// faces is the expensive part of a frame, so unchanged values (e.g. a face
+// that has settled during a pause) are not written again.
+const written = new WeakMap();
+
+function set(node, name, value) {
+  let attrs = written.get(node);
+  if (!attrs) written.set(node, (attrs = {}));
+  if (attrs[name] === value) return;
+  attrs[name] = value;
+  node.setAttribute(name, value);
+}
+
 /** Darkens a #rrggbb colour by `amount` (0–1). */
 function shade(hex, amount) {
   const n = parseInt(hex.slice(1), 16);
@@ -438,14 +451,15 @@ export function createFace(type) {
     const lower = eyeY + spec.eyeH * (1 - squint * 1.6);
     eyes.forEach((eye, i) => {
       const x = cx + (i === 0 ? -eyeX : eyeX);
-      eye.setAttribute(
+      set(
+        eye,
         'd',
         `M ${round(x - spec.eyeR)} ${eyeY} Q ${x} ${round(eyeY - spec.eyeH)} ${round(x + spec.eyeR)} ${eyeY} ` +
           `Q ${x} ${round(lower)} ${round(x - spec.eyeR)} ${eyeY} Z`,
       );
     });
     const sparkle = round(clamp01((0.75 - squint) / 0.45));
-    for (const s of sparkles) s.setAttribute('opacity', sparkle);
+    for (const s of sparkles) set(s, 'opacity', sparkle);
 
     // Brows go up when laughing, inner ends more than outer ones.
     brows.forEach((b, i) => {
@@ -454,13 +468,14 @@ export function createFace(type) {
       const y = browBase - brow * 2.5;
       const inner = x - side * 3.5;
       const outer = x + side * 3.5;
-      b.setAttribute(
+      set(
+        b,
         'd',
         `M ${round(inner)} ${round(y + 0.8 - brow * 1.6)} Q ${round(x)} ${round(y - 1.6)} ${round(outer)} ${round(y + 1)}`,
       );
     });
 
-    for (const c of cheeks) c.setAttribute('cy', round(eyeY + 8 - lift * 2.5));
+    for (const c of cheeks) set(c, 'cy', round(eyeY + 8 - lift * 2.5));
 
     // Mouth: a smile at rest, opening smoothly with the laugh.
     const open = intensity ** 0.85;
@@ -471,31 +486,32 @@ export function createFace(type) {
     const shape =
       `M ${round(cx - w)} ${round(corner)} Q ${cx} ${round(upper)} ${round(cx + w)} ${round(corner)} ` +
       `Q ${cx} ${round(lowerLip)} ${round(cx - w)} ${round(corner)} Z`;
-    mouth.setAttribute('d', shape);
-    clipShape.setAttribute('d', shape);
-    lips.setAttribute('d', shape);
-    teeth.setAttribute(
+    set(mouth, 'd', shape);
+    set(clipShape, 'd', shape);
+    set(lips, 'd', shape);
+    set(
+      teeth,
       'd',
       `M ${round(cx - w)} ${round(corner)} Q ${cx} ${round(upper)} ${round(cx + w)} ${round(corner)} ` +
         `L ${round(cx + w)} ${round(corner + 3)} Q ${cx} ${round(upper + 3)} ${round(cx - w)} ${round(corner + 3)} Z`,
     );
-    teeth.setAttribute('opacity', round(clamp01(open * 4 - 0.4)));
+    set(teeth, 'opacity', round(clamp01(open * 4 - 0.4)));
     const bottom = (corner + lowerLip) / 2;
-    tongue.setAttribute('cx', cx);
-    tongue.setAttribute('cy', round(bottom - 1.5));
-    tongue.setAttribute('rx', round(w * 0.5));
-    tongue.setAttribute('ry', 3.2);
-    tongue.setAttribute('opacity', round(clamp01(open * 3 - 0.3)));
+    set(tongue, 'cx', cx);
+    set(tongue, 'cy', round(bottom - 1.5));
+    set(tongue, 'rx', round(w * 0.5));
+    set(tongue, 'ry', 3.2);
+    set(tongue, 'opacity', round(clamp01(open * 3 - 0.3)));
 
     // Head leans back (moves up, face lifts a little) with a quick shake and
     // a slow wobble; shoulders bounce along.
     const shake = Math.sin(phase * 2 * Math.PI * 8.5) * lean * 1.3 * motion;
     const wobble = Math.sin(phase * 2 * Math.PI * 1.2) * lean * 5 * wobbleSide * motion;
     const headMove = `translate(0 ${round(-lean * 3.5 * motion + shake)}) rotate(${round(wobble)} ${cx} ${cy + ry})`;
-    head.setAttribute('transform', headMove);
-    headBack.setAttribute('transform', headMove);
-    features.setAttribute('transform', `translate(0 ${round(-lean * 1.2 * motion)})`);
-    body.setAttribute('transform', `translate(0 ${round(shake * 0.5 - lean * 0.8 * motion)})`);
+    set(head, 'transform', headMove);
+    set(headBack, 'transform', headMove);
+    set(features, 'transform', `translate(0 ${round(-lean * 1.2 * motion)})`);
+    set(body, 'transform', `translate(0 ${round(shake * 0.5 - lean * 0.8 * motion)})`);
   }
 
   update(0, 1);

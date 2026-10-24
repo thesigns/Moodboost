@@ -16,6 +16,16 @@ export function computeGrid(n, width, height) {
 }
 
 /**
+ * Largest item count (up to `limit`) whose grid cells are still at least
+ * `minSize` px in a `width` × `height` area.
+ */
+export function maxItems(width, height, minSize, limit) {
+  let n = 1;
+  while (n < limit && computeGrid(n + 1, width, height).size >= minSize) n++;
+  return n;
+}
+
+/**
  * Positions the given cell elements in a centred grid inside `container`.
  * Items missing from the last row are split evenly on both sides of it.
  */

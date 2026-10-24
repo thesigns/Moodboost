@@ -57,11 +57,16 @@
     const simulate = document.getElementById('simulate');
     let faces = [];
 
-    // Enough of each type to cycle through all of its hair styles.
+    // ?n=120 shows that many faces (e.g. to check performance); by default
+    // enough of each type to cycle through all of its hair styles.
+    const count = Number(new URLSearchParams(location.search).get('n')) || 18;
+    const types = ['man', 'woman', 'child'];
+
     function build() {
-      faces = ['man', 'woman', 'child'].flatMap((type) =>
-        Array.from({ length: 6 }, () => ({ type, face: createFace(type), offset: Math.random() * 10 })),
-      );
+      faces = Array.from({ length: count }, (_, i) => {
+        const type = types[Math.floor((i * types.length) / count)];
+        return { type, face: createFace(type), offset: Math.random() * 10 };
+      });
       gallery.replaceChildren(...faces.map(({ face }) => face.element));
     }
 
