@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Moodboost</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <main id="stage" aria-hidden="true"></main>
+
+  <section id="screen-start" class="screen">
+    <h1>Moodboost</h1>
+    <button id="btn-start" class="big-button" type="button" disabled>Loading…</button>
+    <p class="hint">Set a comfortable volume.</p>
+    <p id="load-error" class="error" hidden></p>
+  </section>
+
+  <section id="screen-end" class="screen" hidden>
+    <button id="btn-again" class="big-button" type="button">Play again</button>
+  </section>
+
+  <button id="btn-stop" class="stop-button" type="button" hidden>Stop</button>
+</body>
+</html>
