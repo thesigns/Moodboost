@@ -2,6 +2,8 @@
 
 A simple web app that lifts your mood, built on the fact that laughter is contagious.
 
+**▶ Try it: [thesigns.github.io/Moodboost](https://thesigns.github.io/Moodboost/)**
+
 One laughing face appears on screen, then another joins, and another, until a whole crowd is laughing. Every character moves its mouth, eyes and body in time with a real laughter recording. Press Start and let it get to you.
 
 Moodboost is a mood booster, not a therapeutic tool.
