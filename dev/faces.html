@@ -45,6 +45,10 @@
   <div class="controls">
     <label>Intensity <input id="intensity" type="range" min="0" max="1" step="0.01" value="0"></label>
     <label><input id="simulate" type="checkbox" checked> Simulate laughing</label>
+    <label>Smile <input id="smile" type="range" min="0" max="1" step="0.01" value="1"></label>
+    <label>Hold <input id="hold" type="range" min="0" max="1" step="0.01" value="0"></label>
+    <label>Look X <input id="lookX" type="range" min="-1" max="1" step="0.01" value="0"></label>
+    <label>Look Y <input id="lookY" type="range" min="-1" max="1" step="0.01" value="0"></label>
     <button id="reroll" type="button">New faces</button>
   </div>
   <div id="gallery"></div>
@@ -55,6 +59,7 @@
     const gallery = document.getElementById('gallery');
     const slider = document.getElementById('intensity');
     const simulate = document.getElementById('simulate');
+    const poseInputs = ['smile', 'hold', 'lookX', 'lookY'].map((id) => document.getElementById(id));
     let faces = [];
 
     // ?n=120 shows that many faces (e.g. to check performance); by default
@@ -81,8 +86,9 @@
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       const t = now / 1000;
+      const pose = Object.fromEntries(poseInputs.map((input) => [input.id, Number(input.value)]));
       for (const { face, offset } of faces) {
-        face.update(simulate.checked ? fakeLaugh(t + offset) : Number(slider.value), dt);
+        face.update(simulate.checked ? fakeLaugh(t + offset) : Number(slider.value), dt, pose);
       }
       requestAnimationFrame(frame);
     }

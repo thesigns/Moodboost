@@ -89,8 +89,8 @@ function shade(hex, amount) {
 }
 
 /** One-pole smoother with separate rise and fall time constants. */
-function smoother(rise, fall) {
-  let value = 0;
+function smoother(rise, fall, initial = 0) {
+  let value = initial;
   return (target, dt) => {
     value += (target - value) * (1 - Math.exp(-dt / (target > value ? rise : fall)));
     return value;
@@ -295,9 +295,18 @@ let faceCount = 0;
  * Creates a character of the given type ('man' | 'woman' | 'child') with
  * randomized looks.
  *
- * @returns {{element: HTMLElement, update: (intensity: number, dt: number) => void}}
+ * update(intensity, dt, pose) takes an optional pose, whose values the face
+ * eases towards:
+ *   smile  1 = the amused resting face, 0 = serious
+ *   hold   0–1, fighting back a laugh: lips pressed and trembling, shoulders
+ *          shaking silently
+ *   lookX, lookY  -1–1, where the character looks (turns its face); +x is
+ *          right, +y is down
+ *
+ * @param pose the starting pose, taken without easing
+ * @returns {{element: HTMLElement, update: (intensity: number, dt: number, pose?: object) => void}}
  */
-export function createFace(type) {
+export function createFace(type, pose = {}) {
   const spec = TYPES[type] ?? TYPES.man;
   const id = ++faceCount;
   const h = { cx: 50, ...spec.head };
@@ -404,7 +413,11 @@ export function createFace(type) {
       'stroke-width': type === 'child' ? 1.8 : 2, 'stroke-linecap': 'round',
     }),
   );
-  features.append(...eyes, ...sparkles, ...brows);
+  // The eyes move a little further than the rest of the face when looking
+  // aside, which reads as a glance rather than just a turned head.
+  const gaze = el('g');
+  gaze.append(...eyes, ...sparkles);
+  features.append(gaze, ...brows);
 
   if (traits.glasses) {
     const r = spec.eyeR * 1.75;
@@ -436,13 +449,24 @@ export function createFace(type) {
   const browSmooth = smoother(0.15, 0.5);
   const cheekSmooth = smoother(0.2, 0.5);
   const leanSmooth = smoother(0.12, 0.45);
+  const { smile: smile0 = 1, hold: hold0 = 0, lookX: lookX0 = 0, lookY: lookY0 = 0 } = pose;
+  const smileSmooth = smoother(0.4, 0.6, smile0);
+  const holdSmooth = smoother(0.3, 0.2, hold0);
+  const lookXSmooth = smoother(0.2, 0.2, lookX0);
+  const lookYSmooth = smoother(0.2, 0.2, lookY0);
   const wobbleSide = Math.random() < 0.5 ? -1 : 1;
+  const giggleOffset = Math.random() * 10;
   let phase = Math.random() * 10;
 
-  function update(intensity, dt) {
-    const squint = RESTING_SQUINT + (1 - RESTING_SQUINT) * eyeSmooth(intensity, dt);
-    const brow = browSmooth(intensity, dt);
-    const lift = cheekSmooth(intensity, dt);
+  function update(intensity, dt, { smile = 1, hold = 0, lookX = 0, lookY = 0 } = {}) {
+    const rest = smileSmooth(smile, dt);
+    const press = holdSmooth(hold, dt);
+    const gx = lookXSmooth(lookX, dt);
+    const gy = lookYSmooth(lookY, dt);
+    const restSquint = RESTING_SQUINT * rest + 0.35 * press;
+    const squint = restSquint + (1 - restSquint) * eyeSmooth(intensity, dt);
+    const brow = browSmooth(Math.max(intensity, press * 0.5), dt);
+    const lift = cheekSmooth(Math.max(intensity, press * 0.6), dt);
     const lean = leanSmooth(intensity, dt);
     const motion = reducedMotion.matches ? REDUCED_MOTION_SCALE : 1;
     phase += dt;
@@ -477,23 +501,36 @@ export function createFace(type) {
 
     for (const c of cheeks) set(c, 'cy', round(eyeY + 8 - lift * 2.5));
 
-    // Mouth: a smile at rest, opening smoothly with the laugh.
+    // Mouth: a smile at rest (or a flat line when serious), opening smoothly
+    // with the laugh. Held back, the lips press into a quivering wavy line
+    // whose corners twitch upwards.
     const open = intensity ** 0.85;
-    const w = spec.mouthW * (1 + 0.22 * open);
-    const corner = mouthY - 1 - lift * 1.5;
-    const upper = mouthY + 1.2;
-    const lowerLip = mouthY + 3.5 + open * spec.mouthOpen;
+    const w = spec.mouthW * (1 + 0.22 * open) * (1 - 0.12 * (1 - rest)) * (1 - 0.15 * press);
+    const corner = mouthY + 1.2 - rest * 2.2 - lift * 1.5 + press * 0.6;
+    const twitch = (shift) =>
+      press * 1.2 * (0.6 * Math.sin(phase * 2 * Math.PI * 11 + shift) + 0.4 * Math.sin(phase * 2 * Math.PI * 17.3 + shift * 2));
+    const left = corner - Math.max(0, twitch(0));
+    const right = corner - Math.max(0, twitch(2.1));
+    const upper = mouthY + 1.2 + press * 0.3;
+    const lowerLip = mouthY + 2 + 1.5 * rest * (1 - press) - press * 0.4 + open * spec.mouthOpen;
+    const wave = press * 1.5 * (1 + 0.35 * Math.sin(phase * 2 * Math.PI * 9));
+    // Both lips as cubics: the quadratic through `via`, with the two control
+    // points pushed apart vertically by `bend`.
+    const lip = (x0, y0, via, x1, y1, bend) =>
+      `C ${round(x0 + ((cx - x0) * 2) / 3)} ${round(y0 + ((via - y0) * 2) / 3 + bend)} ` +
+      `${round(x1 + ((cx - x1) * 2) / 3)} ${round(y1 + ((via - y1) * 2) / 3 - bend)} ${round(x1)} ${round(y1)}`;
     const shape =
-      `M ${round(cx - w)} ${round(corner)} Q ${cx} ${round(upper)} ${round(cx + w)} ${round(corner)} ` +
-      `Q ${cx} ${round(lowerLip)} ${round(cx - w)} ${round(corner)} Z`;
+      `M ${round(cx - w)} ${round(left)} ${lip(cx - w, left, upper, cx + w, right, wave)} ` +
+      `${lip(cx + w, right, lowerLip, cx - w, left, -wave)} Z`;
     set(mouth, 'd', shape);
     set(clipShape, 'd', shape);
     set(lips, 'd', shape);
+    set(lips, 'stroke-width', round(1.5 + press * 0.7));
     set(
       teeth,
       'd',
-      `M ${round(cx - w)} ${round(corner)} Q ${cx} ${round(upper)} ${round(cx + w)} ${round(corner)} ` +
-        `L ${round(cx + w)} ${round(corner + 3)} Q ${cx} ${round(upper + 3)} ${round(cx - w)} ${round(corner + 3)} Z`,
+      `M ${round(cx - w)} ${round(left)} Q ${cx} ${round(upper)} ${round(cx + w)} ${round(right)} ` +
+        `L ${round(cx + w)} ${round(right + 3)} Q ${cx} ${round(upper + 3)} ${round(cx - w)} ${round(left + 3)} Z`,
     );
     set(teeth, 'opacity', round(clamp01(open * 4 - 0.4)));
     const bottom = (corner + lowerLip) / 2;
@@ -504,16 +541,24 @@ export function createFace(type) {
     set(tongue, 'opacity', round(clamp01(open * 3 - 0.3)));
 
     // Head leans back (moves up, face lifts a little) with a quick shake and
-    // a slow wobble; shoulders bounce along.
+    // a slow wobble; shoulders bounce along. A held-back laugh shakes the
+    // shoulders in silent fits. Looking aside slides the face across the
+    // head and tilts it that way.
     const shake = Math.sin(phase * 2 * Math.PI * 8.5) * lean * 1.3 * motion;
     const wobble = Math.sin(phase * 2 * Math.PI * 1.2) * lean * 5 * wobbleSide * motion;
-    const headMove = `translate(0 ${round(-lean * 3.5 * motion + shake)}) rotate(${round(wobble)} ${cx} ${cy + ry})`;
+    const fit = clamp01(Math.sin((phase + giggleOffset) * 2 * Math.PI * 0.6) * 2 - 0.4);
+    const shudder = Math.sin(phase * 2 * Math.PI * 7) * press * fit * 0.9 * motion;
+    const tilt = wobble + gx * 4 * motion;
+    const headMove =
+      `translate(0 ${round(-lean * 3.5 * motion + shake + shudder * 0.5)}) rotate(${round(tilt)} ${cx} ${cy + ry})`;
     set(head, 'transform', headMove);
     set(headBack, 'transform', headMove);
-    set(features, 'transform', `translate(0 ${round(-lean * 1.2 * motion)})`);
-    set(body, 'transform', `translate(0 ${round(shake * 0.5 - lean * 0.8 * motion)})`);
+    set(features, 'transform', `translate(${round(gx * 4.5)} ${round(gy * 3 - lean * 1.2 * motion)})`);
+    set(gaze, 'transform', `translate(${round(gx * 1.8)} ${round(gy * 1.2)})`);
+    set(body, 'transform', `translate(0 ${round(shake * 0.5 + shudder - lean * 0.8 * motion)})`);
   }
 
-  update(0, 1);
+  // Long enough a step for every smoother to settle on the starting pose.
+  update(0, 60, pose);
   return { element: cell, update };
 }
