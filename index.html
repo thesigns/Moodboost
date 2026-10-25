@@ -13,13 +13,19 @@
 
   <section id="screen-start" class="screen">
     <h1>Moodboost</h1>
-    <button id="btn-start" class="big-button" type="button" disabled>Loading…</button>
-    <p class="hint">Set a comfortable volume.</p>
+    <div class="modes">
+      <button class="big-button" type="button" data-mode="crowd" disabled>Laughing crowd</button>
+      <button class="big-button" type="button" data-mode="contagion" disabled>Try not to laugh</button>
+    </div>
+    <p id="hint" class="hint">Loading…</p>
     <p id="load-error" class="error" hidden></p>
   </section>
 
   <section id="screen-end" class="screen" hidden>
-    <button id="btn-again" class="big-button" type="button">Play again</button>
+    <div class="modes">
+      <button class="big-button" type="button" data-mode="crowd">Laughing crowd</button>
+      <button class="big-button" type="button" data-mode="contagion">Try not to laugh</button>
+    </div>
   </section>
 
   <button id="btn-stop" class="stop-button" type="button" hidden>Stop</button>

@@ -1,11 +1,12 @@
 // main.js — session flow and screens.
 //
-// A session has no fixed length. The first 12 characters each bring their own
-// voice; after that, silent characters keep joining (faster and faster) until
-// the screen is full. Laughter goes on until the user presses Stop, or the tab
-// has been hidden for a while.
+// There are two modes. In the laughing crowd, the first 12 characters each
+// bring their own voice; after that, silent characters keep joining (faster
+// and faster) until the screen is full. In "Try not to laugh" (contagion.js)
+// 12 serious characters crack up one by one. Either way laughter goes on
+// until the user presses Stop, or the tab has been hidden for a while.
 //
-// Joining is scheduled on the audio clock. The visuals never keep their own
+// Everything is scheduled on the audio clock. The visuals never keep their own
 // timeline: every frame they are derived from the time the listener is
 // hearing, so they stay in sync even after the tab was in the background
 // (where timers and animation frames are throttled).
@@ -14,13 +15,15 @@ import {
   createAudioContext,
   createMixer,
   heardTime,
+  levelAt,
   loadVoices,
   positionAt,
   scheduleVoice,
 } from './audio.js';
+import { planScene, STARTING_POSE } from './contagion.js';
 import { computeEnvelope, createIntensityTracker, envelopeAt } from './envelope.js';
 import { createFace } from './faces.js';
-import { layoutCells, maxItems } from './layout.js';
+import { cellCenters, layoutCells, maxItems } from './layout.js';
 
 // ---- Session timing (seconds) ----
 const JOIN_INTERVAL = 6; // between the voiced characters (the first 12)
@@ -29,6 +32,7 @@ const CROWD_ACCELERATION = 8; // ...getting most of the way there after this man
 const FADE_OUT = 6; // fade-out after Stop
 const VOICE_FADE_IN = 1; // a new voice ramps up from silence over this
 const START_DELAY = 0.1; // scheduling headroom after pressing Start
+const BURST_LEVEL = 0.6; // "Try not to laugh": a voice starts where its envelope rises past this
 const HIDDEN_STOP_AFTER = 180; // a session in a hidden tab fades out after this
 
 // ---- Crowd ----
@@ -55,9 +59,9 @@ const stage = document.getElementById('stage');
 const title = document.querySelector('h1');
 const startScreen = document.getElementById('screen-start');
 const endScreen = document.getElementById('screen-end');
-const startButton = document.getElementById('btn-start');
-const againButton = document.getElementById('btn-again');
+const modeButtons = [...document.querySelectorAll('[data-mode]')];
 const stopButton = document.getElementById('btn-stop');
+const hint = document.getElementById('hint');
 const loadError = document.getElementById('load-error');
 
 const ctx = createAudioContext();
@@ -70,23 +74,23 @@ let wakeLock = null;
 let lastFrameMs = 0;
 
 setBouncyText(title, title.textContent);
-setBouncyText(againButton, againButton.textContent);
+for (const button of modeButtons) setBouncyText(button, button.textContent);
 
-// Start loading right away; the Start button waits until everything is ready.
+// Start loading right away; the mode buttons wait until everything is ready.
 loadVoices(ctx, FILES, (done, total) => {
-  setBouncyText(startButton, `Loading… ${done}/${total}`);
+  hint.textContent = `Loading… ${done}/${total}`;
 })
   .then((loaded) => {
     voices = loaded.map((voice) => ({
       ...voice,
       envelope: computeEnvelope(voice.buffer, ENVELOPE_WINDOW),
     }));
-    setBouncyText(startButton, 'Start');
-    startButton.disabled = false;
+    hint.textContent = 'Set a comfortable volume.';
+    for (const button of modeButtons) button.disabled = false;
   })
   .catch((error) => {
     console.error(error);
-    setBouncyText(startButton, 'Unavailable');
+    hint.hidden = true;
     loadError.textContent =
       location.protocol === 'file:'
         ? "Couldn't load the recordings. Open the app through a web server, not as a local file."
@@ -94,44 +98,37 @@ loadVoices(ctx, FILES, (done, total) => {
     loadError.hidden = false;
   });
 
-startButton.addEventListener('click', begin);
-againButton.addEventListener('click', begin);
+for (const button of modeButtons) button.addEventListener('click', () => begin(button.dataset.mode));
 stopButton.addEventListener('click', stop);
 window.addEventListener('resize', relayout);
 document.addEventListener('visibilitychange', onVisibilityChange);
 
-async function begin() {
+async function begin(mode) {
   if (!voices || session) return;
-  startButton.disabled = true;
-  againButton.disabled = true;
+  for (const button of modeButtons) button.disabled = true;
   // resume() has to be called directly from the click (autoplay rules, iOS).
   await ctx.resume();
-  startButton.disabled = false;
-  againButton.disabled = false;
-  startSession();
+  for (const button of modeButtons) button.disabled = false;
+  startSession(mode);
 }
 
-function startSession() {
+function startSession(mode) {
   const now = ctx.currentTime;
-  const joinTimes = computeJoinTimes(now + START_DELAY, voices.length);
+  const start = now + START_DELAY;
+  stage.replaceChildren();
+  updateFaceCap();
 
-  // The voiced characters, scheduled up front. Silent extras are created
-  // later, when they join (see memberAt).
-  const members = shuffledOrder(voices).map((voice, i) => {
-    const offset = randomOffset(voice);
-    const player = scheduleVoice(ctx, mixer.bus, voice, joinTimes[i], offset, VOICE_FADE_IN);
-    return createMember(player);
-  });
+  const { members, joinTimes, scene = null } = mode === 'contagion' ? startScene(start) : startCrowd(start);
 
   // Keep the total level steady as voices join: ramp the shared bus from
   // the scale for i voices to the scale for i + 1 while the new one fades in.
   const bus = mixer.bus.gain;
   bus.cancelScheduledValues(0);
   bus.setValueAtTime(1, now);
-  members.forEach((member, i) => {
+  [...members].sort((a, b) => a.when - b.when).forEach((member, i) => {
     if (i === 0) return;
     bus.setValueAtTime(voiceScale(i), member.when);
-    bus.linearRampToValueAtTime(voiceScale(i + 1), member.when + VOICE_FADE_IN);
+    bus.linearRampToValueAtTime(voiceScale(i + 1), member.levels[1].t);
   });
 
   const master = mixer.master.gain;
@@ -139,8 +136,11 @@ function startSession() {
   master.setValueAtTime(MASTER_LEVEL, now);
 
   session = {
+    mode,
     members,
     joinTimes,
+    scene,
+    positions: [],
     shownCount: 0,
     frameCount: 0,
     stopAt: Infinity, // nobody joins after this
@@ -149,14 +149,46 @@ function startSession() {
     hiddenTimer: null,
   };
 
-  stage.replaceChildren();
-  updateFaceCap();
   startScreen.hidden = true;
   endScreen.hidden = true;
   stopButton.hidden = false;
   requestWakeLock();
   lastFrameMs = performance.now();
   requestAnimationFrame(frame);
+}
+
+/**
+ * The laughing crowd: the voiced characters, scheduled up front. Silent
+ * extras are created later, when they join (see memberAt).
+ */
+function startCrowd(start) {
+  const joinTimes = computeJoinTimes(start, voices.length);
+  const members = shuffledOrder(voices).map((voice, i) => {
+    const when = joinTimes[i];
+    const levels = [{ t: when, v: 0 }, { t: when + VOICE_FADE_IN, v: 1 }];
+    const player = scheduleVoice(ctx, mixer.bus, voice, when, randomOffset(voice), levels);
+    return createMember({ ...player, levels });
+  });
+  return { members, joinTimes };
+}
+
+/**
+ * "Try not to laugh": all 12 characters are there from the start, each
+ * voice starts when its character cracks up (see contagion.js).
+ */
+function startScene(start) {
+  const cast = shuffled(voices);
+  const scene = planScene({
+    types: cast.map((voice) => voice.type),
+    positions: cellCenters(cast.length, stage),
+    start,
+  });
+  const members = cast.map((voice, i) => {
+    const levels = scene.levels(i);
+    const player = scheduleVoice(ctx, mixer.bus, voice, scene.crackAt[i], burstOffset(voice), levels);
+    return createMember({ ...player, levels }, STARTING_POSE);
+  });
+  return { members, joinTimes: cast.map(() => start), scene };
 }
 
 /**
@@ -177,14 +209,18 @@ function computeJoinTimes(first, voicedCount) {
   return times;
 }
 
-/** A character in the session: something to follow (voice + timing) and a face. */
-function createMember({ voice, when, offset, source = null }) {
+/**
+ * A character in the session: something to follow (voice, timing and
+ * volume, see scheduleVoice) and a face, starting in `pose`.
+ */
+function createMember({ voice, when, offset, levels, source = null }, pose) {
   return {
     voice,
     when,
     offset,
+    levels,
     source,
-    face: createFace(voice.type),
+    face: createFace(voice.type, pose),
     tracker: createIntensityTracker({
       gateOpen: GATE_OPEN,
       gateClose: GATE_CLOSE,
@@ -202,7 +238,9 @@ function createMember({ voice, when, offset, source = null }) {
 function memberAt(i) {
   if (!session.members[i]) {
     const voice = voices[Math.floor(Math.random() * voices.length)];
-    session.members[i] = createMember({ voice, when: session.joinTimes[i], offset: randomOffset(voice) });
+    const when = session.joinTimes[i];
+    const levels = [{ t: when, v: 0 }, { t: when + VOICE_FADE_IN, v: 1 }];
+    session.members[i] = createMember({ voice, when, offset: randomOffset(voice), levels });
   }
   return session.members[i];
 }
@@ -291,9 +329,12 @@ function frame(nowMs) {
   // last ones again if the screen got smaller.
   const target = Math.min(faceCap, countJoined(Math.min(t, session.stopAt)));
   let changed = false;
+  let entering = 0;
   while (session.shownCount < target) {
     const member = memberAt(session.shownCount++);
     member.face.element.classList.add('entering');
+    // Several at once pop in one after another.
+    member.face.element.style.setProperty('--enter-delay', `${entering++ * 60}ms`);
     stage.append(member.face.element);
     changed = true;
   }
@@ -309,16 +350,19 @@ function frame(nowMs) {
   const interleave = session.shownCount > INTERLEAVE_ABOVE;
   session.frameCount++;
 
-  // Faces calm down together with the fade-out.
+  // Faces calm down together with the fade-out. After Stop the scene stands
+  // still (but for the laughing), and whoever hadn't cracked stays silent.
   const calm = 1 - clamp01((t - session.fadeStart) / FADE_OUT);
+  const sceneTime = Math.min(t, session.stopAt);
   for (let i = 0; i < session.shownCount; i++) {
     if (interleave && (i + session.frameCount) % 2) continue;
     const member = session.members[i];
     const memberDt = member.lastUpdateMs ? Math.min(0.1, (nowMs - member.lastUpdateMs) / 1000) : dt;
     member.lastUpdateMs = nowMs;
-    const fadeIn = clamp01((t - member.when) / VOICE_FADE_IN);
-    const raw = envelopeAt(member.voice.envelope, positionAt(member, t)) * fadeIn * calm;
-    member.face.update(member.tracker.update(raw, memberDt), memberDt);
+    const level = member.when > session.stopAt ? 0 : levelAt(member.levels, t);
+    const raw = envelopeAt(member.voice.envelope, positionAt(member, t)) * level * calm;
+    const pose = session.scene?.poseAt(i, sceneTime, session.positions);
+    member.face.update(member.tracker.update(raw, memberDt), memberDt, pose);
   }
 
   if (t >= session.end) {
@@ -346,10 +390,11 @@ function finishSession() {
       // Already stopped by the Stop button (some engines reject a second stop).
     }
   }
+  const { mode } = session;
   session = null;
   stopButton.hidden = true;
   endScreen.hidden = false;
-  if (!document.hidden) againButton.focus();
+  if (!document.hidden) endScreen.querySelector(`[data-mode="${mode}"]`).focus();
   releaseWakeLock();
   // Nothing is playing; let the audio hardware idle until the next session.
   ctx.suspend();
@@ -401,7 +446,10 @@ function updateFaceCap() {
 
 function relayout() {
   if (voices) updateFaceCap();
-  layoutCells([...stage.children], stage);
+  const cells = [...stage.children];
+  layoutCells(cells, stage);
+  // Where everyone sits, so characters look the right way.
+  if (session) session.positions = cellCenters(cells.length, stage);
 }
 
 function voiceScale(count) {
@@ -412,13 +460,35 @@ function randomOffset(voice) {
   return voice.loopStart + Math.random() * (voice.loopEnd - voice.loopStart);
 }
 
-/** Random order of the voices, but the first one is always an adult. */
-function shuffledOrder(list) {
+/**
+ * A point in the recording just before a laugh gets loud, so a voice that
+ * bursts out starts with a bang.
+ */
+function burstOffset(voice) {
+  const { values, windowSec } = voice.envelope;
+  const from = Math.max(1, Math.ceil(voice.loopStart / windowSec));
+  const to = Math.floor(voice.loopEnd / windowSec);
+  const onsets = [];
+  for (let w = from; w < to; w++) {
+    if (values[w] > BURST_LEVEL && values[w - 1] <= BURST_LEVEL) onsets.push(w);
+  }
+  if (onsets.length === 0) return randomOffset(voice);
+  const w = onsets[Math.floor(Math.random() * onsets.length)];
+  return Math.max(voice.loopStart, (w - 3) * windowSec);
+}
+
+function shuffled(list) {
   const order = [...list];
   for (let i = order.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [order[i], order[j]] = [order[j], order[i]];
   }
+  return order;
+}
+
+/** Random order of the voices, but the first one is always an adult. */
+function shuffledOrder(list) {
+  const order = shuffled(list);
   const adult = order.findIndex((voice) => voice.type !== 'child');
   [order[0], order[adult]] = [order[adult], order[0]];
   return order;

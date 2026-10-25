@@ -115,9 +115,11 @@ export function createMixer(ctx, masterLevel) {
 
 /**
  * Schedules one voice to start looping at `when` (context time), from
- * `offset` seconds into its recording, fading in over `fadeIn` seconds.
+ * `offset` seconds into its recording. Its volume follows `levels`: points
+ * {t, v} (context time, gain) joined by straight lines, the first one at or
+ * before `when`.
  */
-export function scheduleVoice(ctx, destination, voice, when, offset, fadeIn) {
+export function scheduleVoice(ctx, destination, voice, when, offset, levels) {
   const source = ctx.createBufferSource();
   source.buffer = voice.buffer;
   source.loop = true;
@@ -125,14 +127,28 @@ export function scheduleVoice(ctx, destination, voice, when, offset, fadeIn) {
   source.loopEnd = voice.loopEnd;
 
   const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0, when);
-  gain.gain.linearRampToValueAtTime(1, when + fadeIn);
+  const [first, ...rest] = levels;
+  gain.gain.setValueAtTime(first.v, first.t);
+  for (const { t, v } of rest) gain.gain.linearRampToValueAtTime(v, t);
 
   source.connect(gain).connect(destination);
   source.start(when, offset);
   source.onended = () => gain.disconnect();
 
   return { voice, source, gain, when, offset };
+}
+
+/** A voice's gain at context time `t`, from the `levels` given to scheduleVoice. */
+export function levelAt(levels, t) {
+  if (t <= levels[0].t) return levels[0].v;
+  for (let i = 1; i < levels.length; i++) {
+    const b = levels[i];
+    if (t < b.t) {
+      const a = levels[i - 1];
+      return a.v + ((b.v - a.v) * (t - a.t)) / (b.t - a.t);
+    }
+  }
+  return levels[levels.length - 1].v;
 }
 
 /**

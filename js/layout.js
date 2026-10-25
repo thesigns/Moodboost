@@ -26,13 +26,11 @@ export function maxItems(width, height, minSize, limit) {
 }
 
 /**
- * Positions the given cell elements in a centred grid inside `container`.
- * Items missing from the last row are split evenly on both sides of it.
+ * Square cells for `n` items in a centred grid inside `container`, as
+ * {x, y, size} (top-left corner, side). Items missing from the last row are
+ * split evenly on both sides of it.
  */
-export function layoutCells(cells, container) {
-  const n = cells.length;
-  if (n === 0) return;
-
+export function gridCells(n, container) {
   const width = container.clientWidth;
   const height = container.clientHeight;
   const { cols, rows, size } = computeGrid(n, width, height);
@@ -40,13 +38,23 @@ export function layoutCells(cells, container) {
   const top = (height - rows * size) / 2;
   const lastRowCount = n - (rows - 1) * cols;
 
-  cells.forEach((cell, i) => {
+  return Array.from({ length: n }, (_, i) => {
     const row = Math.floor(i / cols);
     const col = i % cols;
     const rowShift = row === rows - 1 ? ((cols - lastRowCount) * size) / 2 : 0;
-    const x = left + rowShift + col * size;
-    const y = top + row * size;
+    return { x: left + rowShift + col * size, y: top + row * size, size };
+  });
+}
 
+/** Centre point of each grid cell for `n` items in `container`. */
+export function cellCenters(n, container) {
+  return gridCells(n, container).map(({ x, y, size }) => ({ x: x + size / 2, y: y + size / 2 }));
+}
+
+/** Positions the given cell elements in the grid (see gridCells). */
+export function layoutCells(cells, container) {
+  gridCells(cells.length, container).forEach(({ x, y, size }, i) => {
+    const cell = cells[i];
     cell.style.width = `${size}px`;
     cell.style.height = `${size}px`;
     cell.style.transform = `translate(${x}px, ${y}px)`;

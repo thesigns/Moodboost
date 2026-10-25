@@ -2,7 +2,12 @@
 
 ## Idea
 
-Moodboost to prosta apka webowa poprawiająca nastrój, oparta na tym, że śmiech jest zaraźliwy. Na ekranie pojawia się jedna śmiejąca się buzia w SVG, potem dołączają kolejne, jedna po drugiej, aż śmieje się 12 postaci naraz. Każda postać ma własne nagranie śmiechu, a jej usta, oczy i ciało ruszają się w rytm tego nagrania.
+Moodboost to prosta apka webowa poprawiająca nastrój, oparta na tym, że śmiech jest zaraźliwy. Ma dwa tryby:
+
+- **Laughing crowd.** Na ekranie pojawia się jedna śmiejąca się buzia w SVG, potem dołączają kolejne, jedna po drugiej, aż śmieje się cały tłum.
+- **Try not to laugh.** 12 poważnych buzi. Jedna zaczyna się śmiać, inne na nią spoglądają i na siebie, walczą ze śmiechem i w końcu pękają jedna po drugiej.
+
+Każda postać z głosem ma własne nagranie śmiechu, a jej usta, oczy i ciało ruszają się w rytm tego nagrania.
 
 Apka nie jest narzędziem terapeutycznym i nie powinna się tak przedstawiać. To „poprawiacz nastroju”.
 
@@ -31,13 +36,15 @@ Na darmowym planie ElevenLabs wymaga atrybucji, ale pliki były wygenerowane na 
 
 ## Przebieg sesji
 
-1. **Ekran startowy.** Nazwa „Moodboost”, jeden duży przycisk „Start” i krótka, nienachalna wskazówka, żeby ustawić wygodną głośność („Set a comfortable volume.”). Kliknięcie wywołuje `resume()` na `AudioContext` (wymagane przez Safari na iOS i polityki autoplay).
-2. **Ładowanie.** `AudioContext` jest tworzony od razu przy otwarciu strony (w stanie wstrzymanym, `suspended`) i od razu zaczyna się pobieranie i dekodowanie (`decodeAudioData`) wszystkich 12 plików oraz liczenie obwiedni. Przycisk start jest nieaktywny, dopóki wszystko nie jest gotowe, a w tym czasie widać prosty wskaźnik ładowania.
+Opis dotyczy trybu „Laughing crowd”. Tryb „Try not to laugh” ma osobną sekcję niżej. Ekrany, „Stop”, wyciszenie i ukryta karta działają w obu trybach tak samo.
+
+1. **Ekran startowy.** Nazwa „Moodboost”, dwa duże przyciski trybów („Laughing crowd” i „Try not to laugh”) i krótka, nienachalna wskazówka, żeby ustawić wygodną głośność („Set a comfortable volume.”). Kliknięcie wywołuje `resume()` na `AudioContext` (wymagane przez Safari na iOS i polityki autoplay).
+2. **Ładowanie.** `AudioContext` jest tworzony od razu przy otwarciu strony (w stanie wstrzymanym, `suspended`) i od razu zaczyna się pobieranie i dekodowanie (`decodeAudioData`) wszystkich 12 plików oraz liczenie obwiedni. Przyciski trybów są nieaktywne, dopóki wszystko nie jest gotowe, a w tym czasie wskazówka pod nimi pokazuje postęp ładowania („Loading… 5/12”).
 3. **Narastanie chóru.** Zaczyna się od jednej postaci. Co 6 s dołącza kolejna, aż do 12, każda z własnym nagraniem. Kolejność dołączania jest losowa przy każdej sesji (przetasowane 12 plików), ale pierwsza postać powinna być dorosła, nie dziecko.
 4. **Rosnący tłum.** Po dwunastej postaci dołączają kolejne, już bez nowych dźwięków (przy 12 głosach i tak nie da się rozróżnić, ile osób się śmieje). Odstęp skraca się stopniowo z 6 s do 2,5 s. Tłum rośnie do 120 postaci albo mniej, jeśli komórki siatki byłyby mniejsze niż 72 px. Na laptopie wychodzi 120, na telefonie ok. 50–55. Pierwsze 12 postaci jest zawsze widocznych, nawet na bardzo małym ekranie.
 5. **Śmiech bez końca.** Sesja nie kończy się sama: wszyscy śmieją się, dopóki użytkownik nie kliknie „Stop”. Sam wie najlepiej, kiedy skończyć.
 6. **Wyciszenie.** Po „Stop” nikt już nie dołącza, dźwięk łagodnie wycisza się przez 6 s, a postacie uspokajają się i zatrzymują.
-7. **Ekran końcowy.** Przycisk „Play again”. Kolejna sesja używa już zdekodowanych buforów i obwiedni (bez ponownego ładowania), z nowym tasowaniem kolejności, nowymi offsetami startu i nowym losowaniem wyglądu postaci.
+7. **Ekran końcowy.** Te same dwa przyciski trybów, z fokusem na trybie, który właśnie się skończył. Kolejna sesja używa już zdekodowanych buforów i obwiedni (bez ponownego ładowania), z nowym tasowaniem kolejności, nowymi offsetami startu i nowym losowaniem wyglądu postaci.
 
 Przez całą sesję widoczny jest przycisk „Stop”. Jako jedyne wyjście z sesji jest łatwy do znalezienia (czytelny kontrast, cień), ale nie konkuruje z postaciami.
 
@@ -54,6 +61,22 @@ Wszystkie czasy i limity jako stałe na górze `js/main.js`, do łatwego strojen
 - wyciszenie w ukrytej karcie po: 180 s.
 
 Przy tych wartościach 12. postać dołącza po 66 s, 50. po ok. 3 min, a 120. po ok. 6 min.
+
+## Tryb „Try not to laugh”
+
+Pokazuje sam mechanizm zarażania: ktoś zaczyna, reszta patrzy, próbuje się powstrzymać, aż w końcu pęka. Cały przebieg jest planowany z góry przy starcie (`js/contagion.js`) jako funkcja czasu i w każdej klatce odczytywany z czasu audio, tak jak w tłumie.
+
+1. **Start.** Od razu widać 12 postaci, każda z własnym nagraniem (losowo rozsadzone w siatce). Wszystkie są poważne: oczy otwarte, usta w płaskiej kresce. Na początku lekko się rozglądają.
+2. **Pierwszy śmiech.** Po 2,5 s wybucha śmiechem jedna dorosła postać (sekundę wcześniej widać, jak walczy ze śmiechem). Śmieje się sama ok. 12 s.
+3. **Spojrzenia.** Pozostałe postacie po chwili reakcji (0,15–0,6 s) odwracają się do tej, która właśnie wybuchła. Potem co 1,2–2,6 s zmieniają cel: częściej patrzą na śmiejących się, rzadziej na innych walczących ze śmiechem, w obu przypadkach chętniej na bliższych sąsiadów. Kierunek spojrzenia wynika z aktualnego położenia komórek, więc zgadza się także po obróceniu ekranu.
+4. **Walka ze śmiechem.** Bez dźwięku. Zaciśnięte usta drżą falą, kąciki podskakują, oczy lekko się mrużą, ramiona co kilka sekund bezgłośnie się trzęsą. Walka narasta z liczbą śmiejących się (do połowy siły), a przed własnym pęknięciem dochodzi do pełnej. Czasem postać prawie pęka, ale się opanowuje (najwyżej dwa razy).
+5. **Pęknięcia.** Każdy kolejny odstęp jest ok. 0,72 raza krótszy od poprzedniego (±20%): ok. 12; 8,6; 6,2; 4,5 s… aż ostatnie postacie wybuchają niemal naraz. Wszyscy śmieją się po ok. 45 s. Kto pęka następny, jest losowane z wagą zależną od bliskości do już śmiejących się, więc śmiech rozlewa się po ekranie jak fala, ale czasem przeskakuje dalej. Głos wchodzi szybko (0,12 s), od miejsca w nagraniu, gdzie śmiech właśnie robi się głośny.
+6. **„No a ty?”** Po 7 s wspólnego śmiechu wszyscy się uspokajają (dźwięk cichnie przez 1,5 s), otwierają oczy i przez 2,5 s patrzą prosto na widza, z trudem trzymając powagę. Potem jedna postać wybucha, a reszta w ciągu 0,3–1,5 s. Uspokojenie powtarza się co 25 s (zaplanowane jest 20 razy, potem śmiech po prostu trwa).
+7. **Koniec.** Jak w tłumie: śmiech trwa do „Stop”. Po „Stop” scena zamiera, a ci, którzy jeszcze nie pękli, już nie pękną.
+
+Tłumiony śmiech jest bezgłośny. Nagrania z ElevenLabs to efekty dźwiękowe, więc nie da się wygenerować parsknięć tym samym głosem co pełny śmiech, a parsknięcie innym głosem byłoby słychać.
+
+Czasy są stałymi na górze `js/contagion.js`.
 
 **Wydajność dużego tłumu.** Najdroższe jest przerysowywanie SVG, nie JavaScript (aktualizacja 120 buzi to ok. 3 ms). Dlatego:
 
@@ -114,8 +137,9 @@ Zrealizowane warianty:
 - **Fryzury:** mężczyzna: krótka, z przedziałkiem, kręcona, łysina z bokami; kobieta: długie, bob, kok, kucyk, burza loków; dziecko: czub, kucyki, „grzybek”, loczki.
 - **Drobne cechy (losowo):** broda z wąsami u części mężczyzn, okulary u części dorosłych, kolczyki u części kobiet, piegi u części dzieci. Siwe włosy tylko u mężczyzn.
 - **Mimika:** usta z zębami i językiem przy otwarciu, oczy mrużące się w łuki (błysk w oku znika przy mocnym śmiechu), brwi unoszące się (wewnętrzne końce wyżej), unoszące się policzki, odchylanie i drżenie głowy, podskakujące ramiona.
+- **Poza (tryb „Try not to laugh”):** oprócz intensywności śmiechu twarz dostaje pozę, do której płynnie dąży: `smile` (1 = rozbawiona twarz w spoczynku, 0 = poważna), `hold` (0–1, powstrzymywanie śmiechu: usta zaciśnięte w drżącą falę, podskakujące kąciki, mrużenie oczu, bezgłośnie trzęsące się ramiona) i `lookX`/`lookY` (kierunek spojrzenia: twarz przesuwa się po głowie, oczy trochę dalej, głowa lekko się przechyla). Oczy nie mają białek, więc spojrzenie pokazuje obrót twarzy. Bez pozy twarz wygląda tak jak w tłumie.
 - **Losowanie bez powtórzeń:** fryzury (osobno dla każdego typu), kolor skóry i kolor tła komórki są losowane z „worka”, który opróżnia się, zanim jakaś wartość się powtórzy. Dzięki temu w jednej sesji jest jak najwięcej różnorodności.
-- **Podgląd:** `dev/faces.html` pokazuje 18 losowych postaci, z suwakiem intensywności i symulacją śmiechu. Służy do strojenia wyglądu, nie jest częścią apki.
+- **Podgląd:** `dev/faces.html` pokazuje 18 losowych postaci, z suwakiem intensywności, symulacją śmiechu i suwakami pozy (Smile, Hold, Look X, Look Y). Służy do strojenia wyglądu, nie jest częścią apki.
 
 ## Układ ekranu
 
@@ -139,6 +163,7 @@ index.html
 style.css
 js/
   main.js        // przebieg sesji, ekrany
+  contagion.js   // plan sceny „Try not to laugh”
   audio.js       // ładowanie, odtwarzanie, miks
   envelope.js    // liczenie i odczyt obwiedni
   faces.js       // generowanie i animacja postaci SVG
@@ -161,6 +186,7 @@ dev/faces.html   // podgląd postaci do strojenia
 - Przycisk „Stop” w trakcie sesji przechodzi do łagodnego wyciszenia.
 - Działa w desktopowych przeglądarkach (Chrome, Firefox, Safari, Edge) oraz na telefonach (Chrome na Androidzie, Safari na iOS). Na iOS 16.4+ dźwięk gra także w trybie cichym.
 - Po „Stop” sesja kończy się łagodnym wyciszeniem i można ją powtórzyć bez ponownego ładowania plików.
+- „Try not to laugh”: na starcie 12 poważnych postaci, jedna dorosła zaczyna się śmiać, pozostałe patrzą na nią i na siebie, bezgłośnie walczą ze śmiechem i pękają coraz szybciej, głównie od sąsiadów. Po wspólnym śmiechu wszyscy się uspokajają, patrzą na widza i wybuchają znowu.
 
 ## Poza zakresem (na później)
 
